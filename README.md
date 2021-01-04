@@ -22,7 +22,7 @@ Benötigte Hardware
 * HD44780 LCD Display mit I2C Adapter
 * Wemos D1-Mini
 * Header und Kabel, ggf. Lüsterklemme
-* Micro-USB Kabel`
+* Micro-USB Kabel
 * Gehäuse (3D-Druck oder einfach eine Verpackungsbox, z.Bsp. Lindt Hello Schokolade)
 * *Optional:* Power Bank (für mobile Nutzung)
 
@@ -30,9 +30,12 @@ Benötigte Hardware
 
 ![Optional](images/prototype.png)
 
-Die Spannungsversorgung für Sensor und Display erfolgt über den 5V Pin des D1-Mini, welche über den USB-Anschluss mit Spannung versorgt und programmiert wird.
+Die Spannungsversorgung für Sensor und Display erfolgt über den 5V Pin des D1-Mini, welcher wiederum über den USB-Anschluss mit Spannung versorgt und programmiert wird.
 
-Die Pinbelegung wurde so gewählt, dass die Schaltung zu Neuprogrammierung nicht vom D1-Mini getrennt werden muss (Hardware TX, RX bleiben frei). Die eingebaute LED des D1-Mini kann noch verwendet werden (via D4). Außerdem stehen noch 2 GPIO-Pins mit Pull-Up/Down Widerständen zum Anschluss von optionalen Tastern zur Verfügung (D3 und D8).
+Die Pinbelegung wurde so gewählt, dass die Schaltung zur Neuprogrammierung nicht vom D1-Mini getrennt werden muss (TX und RX bleiben frei). Die eingebaute LED des D1-Mini kann noch verwendet werden (via D4). Außerdem stehen noch 2 GPIO-Pins mit Pull-Up/Down Widerständen zum Anschluss von optionalen Tastern zur Verfügung (D3 und D8).
+
+Die Bauteile sind wie folgt zu verschalten.
+Bei den mehrfach verbundenen Pins (5V und G) kam eine Lüsterklemme zum Einsatz.
 
 | D1-Mini | MHZ19 Sensor  | HD44780 LCD Display |
 |---------|---------------|---------------------|
@@ -47,22 +50,22 @@ Die Pinbelegung wurde so gewählt, dass die Schaltung zu Neuprogrammierung nicht
 
 Der Sensor verfügt neben zwei Pin-Reihen, an welche Header angelötet werden können, auch über eine kleine Steckverbindung, welche ebenfalls die nötigen Pins zur Verfügung stellt.
 
-Es werden die Pins 3 (GND), 4 (Vin), 5 (RXD) und 6 (TXD) benötigt.
+Hiervon werden lediglich die Pins 3 (GND), 4 (Vin), 5 (RXD) und 6 (TXD) benötigt.
 
 ![PIN-Layout MHZ19 Sensor](images/sensor-pins.png)
 
 ### LCD Display
 
-Um das HD44780 LCD Display mit I2C ansprechen zu können, ist ein I2C-Adapter nötig. Für eine native Ansteuerung über den parallelen Datenbus sind am D1-Mini zu wenig Pins verfügbar.
+Um das HD44780 LCD Display mit I2C ansprechen zu können, ist ein I2C-Adapter nötig. Für eine native Ansteuerung über den parallelen Datenbus (6 Pins für 4 Bit Datenbus, R/W und Enable) sind am D1-Mini zu wenig Pins verfügbar.
 
 Der I2C-Adapter bietet zusätzlich die Möglichkeit, die LCD Hintergrundbeleuchtung via Software ein- und auszuschalten. Hiermit könnte man die Anzeige beim Erreichen der Warn-Schwelle blinken lassen.
 
-Außerdem verfügt der I2C-Adapter über 2 Pins um die LCD Hintergrundbeleuchtung per Schalter ein- und auszuschalten zu können. So könnte man die Anzeige bei Dauereinsatz der CO2-Ampel über Nacht abschalten.
+Außerdem verfügt der I2C-Adapter über 2 Pins um die LCD Hintergrundbeleuchtung zusätzlich per Schalter ein- und auszuschalten zu können. So könnte man die Anzeige bei Dauereinsatz der CO2-Ampel über Nacht abschalten.
 
 ### Anschluss optionaler Taster
 
 Zur Umsetzung einer Menüsteuerung können optional 2 Taster angeschlossen werden.
-Durch Verwendung von GPIO-Pins mit internen Pull-Up/Down Widerständen sind keine separaten Vorwiderstände nötig.
+Durch Verwendung von GPIO-Pins mit internen Pull-Up/Down-Widerständen sind keine separaten Vorwiderstände nötig.
 
 | D1-Mini        | Taster 1 | Taster 2 |
 |----------------|----------|----------|
@@ -116,7 +119,7 @@ Weitere Tools werden automatisch als VS Code Plugins installiert, sobald der Roo
   cd co2-ampel
   ```
 
-* In den neu angelegten Ordner wechseln und diese in Visual Studio Code öffnen (`File > Open Folder ...` oder auf der Kommandozeile mit `code .`)
+* In den neu angelegten Ordner wechseln und diesen in Visual Studio Code öffnen (`File > Open Folder ...` oder auf der Kommandozeile mit `code .`)
 * Die vorgeschlagenen Erweiterungen (u.A. [Platform IO](https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide)) installieren
 * Das Projekt übersetzen mit `Terminal > Run Build Task`
 
