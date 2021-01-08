@@ -48,6 +48,8 @@ Bei den mehrfach verbundenen Pins (5V und G) kam eine Lüsterklemme zum Einsatz.
 | D5      | TXD (grün)    |                     |
 | D6      | RXD (blau)    |                     |
 
+![Schaltung](images/routing.png)
+
 ### MHZ19 Sensor
 
 Der Sensor verfügt neben zwei Pin-Reihen, an welche Header angelötet werden können, auch über eine kleine Steckverbindung, welche ebenfalls die nötigen Pins zur Verfügung stellt.
