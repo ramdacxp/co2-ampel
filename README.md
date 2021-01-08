@@ -1,7 +1,9 @@
 # CO2 Ampel
 
-Dieses Repo enthält eine CO²-Ampel mit LCD Display, welche kontinuierlich die CO² Konzentration in der Umgebungsluft misst.
+Dieses Repository enthält die Software für eine [CO2-Ampel](https://github.com/ramdacxp/co2-ampel) mit LCD Display, welche kontinuierlich die CO² Konzentration in der Umgebungsluft misst.
 Die gemessen Werte werden als Zahlenwert (ppm) und in einer Ampel-Darstellung (Ok, Hoch, Kritisch) ausgegeben.
+
+Optional kann die Ampel per WLAN mit dem [CO2-Server](https://github.com/ramdacxp/co2-server) verbunden werden, welcher die gemessenen Werte protokolliert und auswertet.
 
 ![CO2-Ampel](images/ampel.png)
 
@@ -74,29 +76,22 @@ Durch Verwendung von GPIO-Pins mit internen Pull-Up/Down-Widerständen sind kein
 | D3 (Pull-Up)   | x        |          |
 | D8 (Pull-Down) |          | x        |
 
-Im Quellcode ist die Anbindung der Taster auskommentiert:
+Ohne die Verwendung von Tastern ist die Ampel immer im **Messmodus**.
 
-```cpp
-#include <Bounce2.h>
-...
-// Taster
-#define BTN1 D1MINI_D3
-#define BTN2 D1MINI_D8
-#define BTN_DEBOUNCETIME 50
-...
-Bounce bouncer1 = Bounce();
-...
-// setup menu buttons
-pinMode(BTN1, INPUT_PULLUP);
-bouncer1.attach(BTN1);
-bouncer1.interval(15);
-...
-bouncer1.update();
-if (bouncer1.fell())
-{
-  toggleAction();
-}
-```
+Ansonsten wechselt Taster 1 in ein **Auswahlmenü** zwischen:
+
+* Messmodus
+* Kalibrierung
+* Infoanzeige
+
+Taster 2 aktiviert die gewählte Funktion bzw. schaltet die Infoanzeige zwischen
+folgenden Werten um:
+
+* Laufzeit der Ampel
+* Letzter Fehlercode des Sensors
+* Genauigkeit des Sensors
+* Hintergrund CO²-Wert
+* Version des Sensors
 
 ## Software
 
