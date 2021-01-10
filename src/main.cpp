@@ -3,11 +3,13 @@
 #include "MHZ19.h"
 #include <SoftwareSerial.h>
 #include <Bounce2.h>
+#include "uptime.h"
 
 #define CO2LEVEL_MAX_OK 800
 #define CO2LEVEL_MAX_WARN 1000
 #define SENSOR_INIT_TIME 60000
 #define SENSOR_UPDATE_INTERVAL 10000
+#define SENSOR_CALIBRATION_DURATION 180000
 
 /*******************************************************************************
  * D1 Mini C defines use the GPIO values, not the Dxx labels printed on the board.
@@ -93,6 +95,7 @@ byte characterBtnR[] = {
 
 unsigned long tsNow = 0;
 unsigned long tslastUpdate = 0;
+unsigned long tsCalStart = 0;
 int sensorCo2 = -1;
 float sensorTemp = -1;
 
@@ -195,8 +198,16 @@ void changeAction()
 void startCalibration()
 {
   lcd.setCursor(0, 1);
-  lcd.print("Nicht implement.");
-  action = MainAction::Measure;
+  lcd.print("Kalibr. startet ");
+
+  // sensor.setRange(5000);
+  // delay(500);
+  sensor.autoCalibration(false);
+  delay(500);
+  sensor.calibrate();
+  delay(500);
+
+  tsCalStart = tsNow;
 }
 
 void printInfo()
@@ -210,16 +221,34 @@ void printInfo()
   if (infoId == 0)
   {
     lcd.setCursor(0, 0);
-    lcd.print("Laufzeit");
+    lcd.print("Sensor Status");
     lcd.setCursor(0, 1);
-    lcd.print(String(tsNow));
+    lcd.print("ErrorCode: ");
+    lcd.print(String(sensor.errorCode));
   }
   else if (infoId == 1)
   {
+    uptime::calculateUptime();
+
+    unsigned long d = uptime::getDays();
+    unsigned long h = uptime::getHours();
+    unsigned long m = uptime::getMinutes();
+    unsigned long s = uptime::getSeconds();
+
     lcd.setCursor(0, 0);
-    lcd.print("Fehlercode");
+    lcd.print("Ampel aktiv seit");
     lcd.setCursor(0, 1);
-    lcd.print(String(sensor.errorCode));
+    lcd.print(String(d));
+    lcd.print("d ");
+    lcd.print(String(h));
+    lcd.print(":");
+    if (m < 10)
+      lcd.print("0");
+    lcd.print(String(m));
+    lcd.print(":");
+    if (s < 10)
+      lcd.print("0");
+    lcd.print(String(s));
   }
   else if (infoId == 2)
   {
@@ -239,16 +268,34 @@ void printInfo()
   }
   else if (infoId == 4)
   {
-    char version[5];
+    char version[4];
     sensor.getVersion(version);
-    version[4] = 0;
 
     lcd.setCursor(0, 0);
-    lcd.print("Sensorversion");
+    lcd.print("Sensor Firmware ");
     lcd.setCursor(0, 1);
-    lcd.print(String(version));
+    lcd.print("Version: ");
+    lcd.print(version[0]);
+    lcd.print(version[1]);
+    lcd.print(".");
+    lcd.print(version[2]);
+    lcd.print(version[3]);
+  }
+}
+
+void updateCalibrationProgress()
+{
+  int remainingSek = ((tsCalStart + SENSOR_CALIBRATION_DURATION) - tsNow) / 1000;
+  if (remainingSek <= 0)
+  {
+    tsCalStart = 0;
+    action = MainAction::Measure;
   }
 
+  lcd.setCursor(0, 1);
+  lcd.print("Kalibrierung ");
+  lcd.print(String(remainingSek));
+  lcd.print("s   ");
 }
 
 void executeAction()
@@ -316,5 +363,12 @@ void loop()
     executeAction();
   }
 
-  updateSensorData();
+  if ((action == MainAction::Calibrate) && (tsCalStart > 0))
+  {
+    updateCalibrationProgress();
+  }
+  else
+  {
+    updateSensorData();
+  }
 }
