@@ -5,11 +5,23 @@
 #include <Bounce2.h>
 #include "uptime.h"
 
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
+
+// Use credentials-sample.h as blueprint for credentials.h and add your wlan info there.
+#include "credentials.h"
+
 #define CO2LEVEL_MAX_OK 800
 #define CO2LEVEL_MAX_WARN 1000
 #define SENSOR_INIT_TIME 60000
 #define SENSOR_UPDATE_INTERVAL 10000
 #define SENSOR_CALIBRATION_DURATION 180000
+
+#define SERVER_POST_URL "http://berry:4444/api/AirQuality/mischa"
+#define SERVER_MAX_SENT_INTERVAL 60000
+#define SERVER_MIN_CO2_DELTA 5
+#define SERVER_MIN_TEMP_DELTA 30
 
 /*******************************************************************************
  * D1 Mini C defines use the GPIO values, not the Dxx labels printed on the board.
@@ -99,6 +111,10 @@ unsigned long tsCalStart = 0;
 int sensorCo2 = -1;
 float sensorTemp = -1;
 
+unsigned long tsSent = 0;
+int sentCo2 = 0;
+int sentTemp = 0;
+
 enum MainAction
 {
   Measure,
@@ -107,6 +123,46 @@ enum MainAction
 };
 
 MainAction action = MainAction::Measure;
+
+void sendDataToServer()
+{
+  // nothing to send
+  if ((sensorCo2 == -1) || (sensorTemp == -1))
+    return;
+
+  // do not send to often
+  if (tsNow - tsSent < SERVER_MAX_SENT_INTERVAL)
+    return;
+
+  // send only if changed significantly
+  int temp = sensorTemp * 10;
+  if ((abs(sentTemp - temp) < SERVER_MIN_TEMP_DELTA) &&
+      (abs(sentCo2 - sensorCo2) < SERVER_MIN_CO2_DELTA))
+    return;
+
+  Serial.print("Sending: ");
+
+  WiFiClient client;
+  HTTPClient http;
+
+  http.begin(client, SERVER_POST_URL);
+  http.addHeader("Content-Type", "application/json");
+  String data = "{\"temperature\":" + String(temp) + ",\"co2Concentration\":" + String(sensorCo2) + "}";
+  Serial.print(data);
+  tsSent = tsNow;
+  int httpResponseCode = http.POST(data);
+  http.end();
+
+  Serial.print(" Done. Response code: ");
+  Serial.println(httpResponseCode);
+
+  // if it was ok -> remember sent values
+  if (httpResponseCode == HTTP_CODE_OK)
+  {
+    sentCo2 = sensorCo2;
+    sentTemp = temp;
+  }
+}
 
 const char *getCo2Message()
 {
@@ -146,21 +202,17 @@ void updateSensorData()
   if (tsNow - tslastUpdate < SENSOR_UPDATE_INTERVAL)
     return;
 
-  // update data
-  tslastUpdate = tsNow;
-
-  Serial.println("Reading sensor ...");
-
   // read data
-  // lcd.noBacklight();
+  Serial.print("Reading: ");
+  tslastUpdate = tsNow;
   sensorCo2 = sensor.getCO2();
   sensorTemp = sensor.getTemperature(true);
 
-  Serial.print("- CO² (ppm): ");
-  Serial.println(sensorCo2);
-  Serial.print("- Temperature (°C): ");
-  Serial.println(sensorTemp);
-  Serial.print("- ErrorCode: ");
+  Serial.print("CO²: ");
+  Serial.print(sensorCo2);
+  Serial.print(", Temp: ");
+  Serial.print(sensorTemp);
+  Serial.print(", ErrorCode: ");
   Serial.println(sensor.errorCode);
 
   if (action == MainAction::Measure)
@@ -214,7 +266,7 @@ void printInfo()
 {
   static uint infoId;
   infoId++;
-  if (infoId > 4)
+  if (infoId > 6)
     infoId = 0;
 
   lcd.clear();
@@ -281,6 +333,20 @@ void printInfo()
     lcd.print(version[2]);
     lcd.print(version[3]);
   }
+  else if (infoId == 5)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("WLAN Verbindung");
+    lcd.setCursor(0, 1);
+    lcd.print(WiFi.status() == WL_CONNECTED ? "Verbunden" : "Nicht verbunden");
+  }
+  else if (infoId == 6)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("IP Adresse");
+    lcd.setCursor(0, 1);
+    lcd.print(WiFi.localIP());
+  }
 }
 
 void updateCalibrationProgress()
@@ -334,14 +400,25 @@ void setup()
   lcd.createChar(5, characterBtnR);
   lcd.setCursor(0, 0);
   lcd.print("CO\x02-Ampel");
-  lcd.setCursor(0, 1);
-  lcd.print("Initialisierung");
   lcd.backlight();
 
   // Sensor
+  lcd.setCursor(0, 1);
+  lcd.print("Sensor ...");
   softSerial.begin(9600);
   sensor.begin(softSerial);
   sensor.autoCalibration();
+
+  // WLAN
+  lcd.setCursor(0, 1);
+  lcd.print("WLAN ...  ");
+  lcd.setCursor(10, 1);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    lcd.print(".");
+  }
 
   // init done, on board LED off
   digitalWrite(LED_BUILTIN, 1);
@@ -370,5 +447,6 @@ void loop()
   else
   {
     updateSensorData();
+    sendDataToServer();
   }
 }
