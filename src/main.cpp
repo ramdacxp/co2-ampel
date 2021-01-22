@@ -1,3 +1,21 @@
+/*******************************************************************************
+ *
+ * -== CO2-Ampel ==-
+ *
+ * https://github.com/ramdacxp/co2-ampel
+ * https://github.com/ramdacxp/co2-server
+ *
+ * Uncomment the first line to enable upload to CO2-Server via WLAN.
+ * Use credentials-sample.h as template for credentials.h and add your wlan
+ * info there.
+ *
+ * Zur Aktivierung des Datentransfers zum CO2-Server via WLAN, bitte die erste
+ * Zeile auskommentieren. Verwenden Sie credentials-sample.h als Vorlage
+ * für die Datei credentials.h und tragen Sie dort ihre WLAN Zugangsdaten ein.
+ *******************************************************************************/
+
+// #define use_co2_server
+
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
 #include "MHZ19.h"
@@ -5,23 +23,27 @@
 #include <Bounce2.h>
 #include "uptime.h"
 
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
-
-// Use credentials-sample.h as blueprint for credentials.h and add your wlan info there.
-#include "credentials.h"
-
 #define CO2LEVEL_MAX_OK 800
 #define CO2LEVEL_MAX_WARN 1000
 #define SENSOR_INIT_TIME 60000
 #define SENSOR_UPDATE_INTERVAL 10000
 #define SENSOR_CALIBRATION_DURATION 180000
 
+#ifdef use_co2_server
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
+
+// Use credentials-sample.h as template for credentials.h and add your wlan info there.
+#include "credentials.h"
+
+// Adapt the server url including name of this data source at the end
 #define SERVER_POST_URL "http://berry:4444/api/AirQuality/mischa"
+
 #define SERVER_MAX_SENT_INTERVAL 60000
 #define SERVER_MIN_CO2_DELTA 5
 #define SERVER_MIN_TEMP_DELTA 30
+#endif
 
 /*******************************************************************************
  * D1 Mini C defines use the GPIO values, not the Dxx labels printed on the board.
@@ -124,6 +146,7 @@ enum MainAction
 
 MainAction action = MainAction::Measure;
 
+#ifdef use_co2_server
 void sendDataToServer()
 {
   // nothing to send
@@ -163,6 +186,7 @@ void sendDataToServer()
     sentTemp = temp;
   }
 }
+#endif
 
 const char *getCo2Message()
 {
@@ -264,9 +288,15 @@ void startCalibration()
 
 void printInfo()
 {
+#ifdef use_co2_server
+  const int maxInfoId = 4;
+#else
+  const int maxInfoId = 6;
+#endif
+
   static uint infoId;
   infoId++;
-  if (infoId > 6)
+  if (infoId > maxInfoId)
     infoId = 0;
 
   lcd.clear();
@@ -333,6 +363,8 @@ void printInfo()
     lcd.print(version[2]);
     lcd.print(version[3]);
   }
+
+#ifdef use_co2_server
   else if (infoId == 5)
   {
     lcd.setCursor(0, 0);
@@ -347,6 +379,7 @@ void printInfo()
     lcd.setCursor(0, 1);
     lcd.print(WiFi.localIP());
   }
+#endif
 }
 
 void updateCalibrationProgress()
@@ -409,6 +442,7 @@ void setup()
   sensor.begin(softSerial);
   sensor.autoCalibration();
 
+#ifdef use_co2_server
   // WLAN
   lcd.setCursor(0, 1);
   lcd.print("WLAN ...  ");
@@ -419,6 +453,7 @@ void setup()
     delay(500);
     lcd.print(".");
   }
+#endif
 
   // init done, on board LED off
   digitalWrite(LED_BUILTIN, 1);
@@ -447,6 +482,8 @@ void loop()
   else
   {
     updateSensorData();
+#ifdef use_co2_server
     sendDataToServer();
+#endif
   }
 }

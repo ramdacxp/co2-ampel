@@ -124,6 +124,18 @@ Weitere Tools werden automatisch als VS Code Plugins installiert, sobald der Roo
 
 Der C++ Quellcode der CO²-Ampel befindet sich in der Datei `src\main.cpp`.
 
+## CO2-Server
+
+Diese CO2-Ampel bietet optional die Möglichkeit, die Messwerte per WLAN an einen [CO2-Server](https://github.com/ramdacxp/co2-server) zu senden. Dieser Server kann die Messwerte von mehreren Datenquellen im CSV-Format speichern und für Auswertungen bereitstellen. Er bietet eine grafische Anzeige der Verlaufs der CO² Konzentration über die Zeit.
+
+Der Server kann auf einem eigenen Rechner im lokalen WLAN betrieben. So müssen keine Messwerte an Dienste im Internet übertragen werden. Der Server ist in Docker lauffähig. Fertige Docker-Container für Window, Linux und Raspberry Pi stehen zur Verfügung.
+
+Um die Serverunterstützung zu aktivieren:
+
+* Aktivieren Sie das Define `#define use_co2_server` am Anfang der Datei `src\main.cpp`.
+* Kopieren Sie `credentials-sample.h` nach `credentials.h` und tragen Sie hier die WLAN Zugangsdaten ein.
+* Passen Sie `SERVER_POST_URL` an die Adresse des zu verwendenden CO2-Servers an.
+
 ## Links
 
 * [Der CO2-Warner für die Schule](https://www.heise.de/select/make/2020/5/2022015381334973804) im [Make: Magazin 5/2020](https://www.heise.de/select/make/2020/5)
