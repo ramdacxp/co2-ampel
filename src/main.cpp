@@ -1,21 +1,28 @@
 /*******************************************************************************
- *
  * -== CO2-Ampel ==-
  *
  * https://github.com/ramdacxp/co2-ampel
  * https://github.com/ramdacxp/co2-server
  *
- * Uncomment the first line to enable upload to CO2-Server via WLAN.
- * Use credentials-sample.h as template for credentials.h and add your wlan
- * info there.
+ *******************************************************************************
+ * The next block enables/disables optional features.
+ * (Un)comment the line to (de)activate the related feature.
+ * Is using the CO2-Server, use credentials-sample.h as template for
+ * credentials.h and add your wlan info there.
  *
- * Zur Aktivierung des Datentransfers zum CO2-Server via WLAN, bitte die erste
- * Zeile auskommentieren. Verwenden Sie credentials-sample.h als Vorlage
+ * Der nächste Block dient der Aktivierung optionaler Features.
+ * (De)aktivieren Sie einzelne Features durch kommentieren der betreffenden Zeile.
+ * Bei Verwendung des CO2-Servers verwenden Sie credentials-sample.h als Vorlage
  * für die Datei credentials.h und tragen Sie dort ihre WLAN Zugangsdaten ein.
  *******************************************************************************/
 
 // #define use_co2_server
+// #define has_statusled
+#define has_buttons
 
+/*******************************************************************************
+ * Common includes and settings
+ ******************************************************************************/
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
 #include "MHZ19.h"
@@ -28,7 +35,35 @@
 #define SENSOR_INIT_TIME 60000
 #define SENSOR_UPDATE_INTERVAL 10000
 #define SENSOR_CALIBRATION_DURATION 180000
+#define BLINK_INTERVAL 500
 
+/*******************************************************************************
+ * D1 Mini C defines use the GPIO values, not the Dxx labels printed on the board.
+ * GPIO 2 (D4) is connected to the built in LED; also available as LED_BUILTIN.
+ ******************************************************************************/
+#define D1MINI_D0 16
+// #define D1MINI_D1 5 // used by I2C / LCD display
+// #define D1MINI_D2 4 // used by I2C / LCD display
+#define D1MINI_D3 0
+// #define D1MINI_D4 2 // internal LED, do not use
+#define D1MINI_D5 14
+#define D1MINI_D6 12
+#define D1MINI_D7 13
+#define D1MINI_D8 15
+
+/*******************************************************************************
+ * Status LED
+ ******************************************************************************/
+#ifdef has_statusled
+#include <Adafruit_NeoPixel.h>
+// Status LED brightness: 1 (dark) ... 255 (bright)
+#define LED_PIN D1MINI_D7
+#define LED_BRIGHTNESS 24
+#endif
+
+/*******************************************************************************
+ * CO2 Server
+ ******************************************************************************/
 #ifdef use_co2_server
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -46,30 +81,24 @@
 #endif
 
 /*******************************************************************************
- * D1 Mini C defines use the GPIO values, not the Dxx labels printed on the board.
- * GPIO 2 (D4) is connected to the built in LED; also available as LED_BUILTIN.
+ * Buttons
  ******************************************************************************/
-#define D1MINI_D0 16
-// #define D1MINI_D1 5 // used by I2C / LCD display
-// #define D1MINI_D2 4 // used by I2C / LCD display
-#define D1MINI_D3 0
-// #define D1MINI_D4 2 // internal LED, do not use
-#define D1MINI_D5 14
-#define D1MINI_D6 12
-#define D1MINI_D7 13
-#define D1MINI_D8 15
-
-// Taster
 #define BTN1 D1MINI_D3
 #define BTN2 D1MINI_D8
 #define BTN_DEBOUNCETIME 50
 
+/*******************************************************************************
+ * Display
+ ******************************************************************************/
 // LCD I2C Pins
 // - GND -> G
 // - VCC -> 5V
 // - SDA -> D2
 // - SCL -> D1
 
+/*******************************************************************************
+ * CO2 Sensor
+ ******************************************************************************/
 // CO2-Pins (right to left)
 // RX/TX must be cross-connected
 // - 3 (black, GND) -> G
@@ -83,6 +112,10 @@ MHZ19 sensor;
 SoftwareSerial softSerial(SENSOR_RX, SENSOR_TX);
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+#ifdef has_statusled
+Adafruit_NeoPixel statusLed = Adafruit_NeoPixel(1, LED_PIN, NEO_GRB + NEO_KHZ800);
+#endif
 
 Bounce bouncer1 = Bounce();
 Bounce bouncer2 = Bounce();
@@ -128,7 +161,7 @@ byte characterBtnR[] = {
     B11111};
 
 unsigned long tsNow = 0;
-unsigned long tslastUpdate = 0;
+unsigned long tsLastUpdate = 0;
 unsigned long tsCalStart = 0;
 int sensorCo2 = -1;
 float sensorTemp = -1;
@@ -136,6 +169,9 @@ float sensorTemp = -1;
 unsigned long tsSent = 0;
 int sentCo2 = 0;
 int sentTemp = 0;
+
+unsigned long blinkLastChange = 0;
+bool blinkActive = false;
 
 enum MainAction
 {
@@ -200,6 +236,26 @@ const char *getCo2Message()
     return "Kritisch";
 }
 
+#ifdef has_statusled
+const uint32_t getCo2StatusColor()
+{
+  if (tsNow < SENSOR_INIT_TIME)
+    return statusLed.Color(0, 0, 255);
+  else if (sensorCo2 <= CO2LEVEL_MAX_OK)
+    return statusLed.Color(0, 255, 0);
+  else if (sensorCo2 <= CO2LEVEL_MAX_WARN)
+    return statusLed.Color(255, 200, 0);
+  else
+    return blinkActive ? statusLed.Color(255, 0, 0) : 0;
+}
+
+void updateStatusLed()
+{
+  statusLed.setPixelColor(0, getCo2StatusColor());
+  statusLed.show();
+}
+#endif
+
 void printSensorData()
 {
   // Temperature
@@ -223,12 +279,12 @@ void printSensorData()
 void updateSensorData()
 {
   // skip update if interval not reached
-  if (tsNow - tslastUpdate < SENSOR_UPDATE_INTERVAL)
+  if (tsNow - tsLastUpdate < SENSOR_UPDATE_INTERVAL)
     return;
 
   // read data
   Serial.print("Reading: ");
-  tslastUpdate = tsNow;
+  tsLastUpdate = tsNow;
   sensorCo2 = sensor.getCO2();
   sensorTemp = sensor.getTemperature(true);
 
@@ -241,6 +297,10 @@ void updateSensorData()
 
   if (action == MainAction::Measure)
     printSensorData();
+
+#ifdef has_statusled
+  updateStatusLed();
+#endif
 }
 
 void changeAction()
@@ -435,6 +495,15 @@ void setup()
   lcd.print("CO\x02-Ampel");
   lcd.backlight();
 
+#ifdef has_statusled
+  // Status-LED
+  statusLed.begin();
+  statusLed.clear();
+  statusLed.setBrightness(LED_BRIGHTNESS);
+  statusLed.setPixelColor(0, statusLed.Color(255, 0, 255));
+  statusLed.show();
+#endif
+
   // Sensor
   lcd.setCursor(0, 1);
   lcd.print("Sensor ...");
@@ -445,13 +514,13 @@ void setup()
 #ifdef use_co2_server
   // WLAN
   lcd.setCursor(0, 1);
-  lcd.print("WLAN ...  ");
-  lcd.setCursor(10, 1);
+  lcd.print("WLAN      ");
+  lcd.setCursor(5, 1);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(500);
     lcd.print(".");
+    delay(500);
   }
 #endif
 
@@ -462,6 +531,16 @@ void setup()
 void loop()
 {
   tsNow = millis();
+
+  if (tsNow - blinkLastChange > BLINK_INTERVAL)
+  {
+    blinkLastChange = tsNow;
+    blinkActive = !blinkActive;
+
+#ifdef has_statusled
+    updateStatusLed();
+#endif
+  }
 
   bouncer1.update();
   if (bouncer1.fell())
@@ -482,6 +561,7 @@ void loop()
   else
   {
     updateSensorData();
+
 #ifdef use_co2_server
     sendDataToServer();
 #endif
