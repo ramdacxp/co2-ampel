@@ -69,6 +69,8 @@ Außerdem verfügt der I2C-Adapter über 2 Pins um die LCD Hintergrundbeleuchtun
 ### Anschluss optionaler Taster
 
 Zur Umsetzung einer Menüsteuerung können optional 2 Taster angeschlossen werden.
+Aktivieren Sie das Define `#define has_buttons` am Anfang der Datei `src\main.cpp` wenn Taster angeschlossen sind.
+
 Durch Verwendung von GPIO-Pins mit internen Pull-Up/Down-Widerständen sind keine separaten Vorwiderstände nötig.
 
 | D1-Mini        | Taster 1 | Taster 2 |
@@ -95,6 +97,20 @@ folgenden Werten um:
 * Hintergrund CO²-Wert
 * Version des Sensors
 
+### Anschluss optionaler Status LED
+
+Am GPIO Pin D7 kann eine optionale Multicolor LED mit WS2812 Controller Chip angeschlossen werden.
+
+Aktivieren Sie das Define `#define has_statusled` am Anfang der Datei `src\main.cpp` wenn die LED angeschlossen ist.
+
+Wenn aktiviert wird der Ampel Status über die Farbe der LED visualisiert:
+
+* *Violett* - Software startet und Verbindung zum WLAN wird aufgebaut (bei Verwendung des CO2-Servers)
+* *Blau* - Initialisierungsphase direkt nach dem Start der Ampel (1 Minute)
+* *Grün* - CO2 Konzentration niedrig
+* *Orange* - CO2 Konzentration im Warn-Bereich
+* *Rot blinkend* - CO2 Konzentration im kritischen Bereich. Lüften erforderlich.
+
 ## Software
 
 Benötigte Software unter Windows 10:
@@ -106,7 +122,7 @@ Weitere Tools werden automatisch als VS Code Plugins installiert, sobald der Roo
 
 * VSCode und Git müssen installiert sein
 * Windows Eingabeaufforderung öffnen (z.Bsp. mit `[Win]-R`, `cmd`, `[Enter]`)
-* In den Ordner wechseln, der Code-Repositories enthalten soll (z.Bsp. `Source\Repos`) und dieses Repo mit Git clonen:
+* In den Ordner wechseln, der Code-Repositories enthalten soll (z.Bsp. `Source\Repos`) und dieses Repo mit Git klonen:
 
   ```cmd
   cd 

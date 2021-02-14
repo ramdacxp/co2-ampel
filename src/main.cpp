@@ -11,13 +11,13 @@
  * credentials.h and add your wlan info there.
  *
  * Der nächste Block dient der Aktivierung optionaler Features.
- * (De)aktivieren Sie einzelne Features durch kommentieren der betreffenden Zeile.
+ * (De)aktivieren Sie einzelne Features durch Kommentieren der betreffenden Zeile.
  * Bei Verwendung des CO2-Servers verwenden Sie credentials-sample.h als Vorlage
  * für die Datei credentials.h und tragen Sie dort ihre WLAN Zugangsdaten ein.
  *******************************************************************************/
 
-// #define use_co2_server
-// #define has_statusled
+#define use_co2_server
+#define has_statusled
 #define has_buttons
 
 /*******************************************************************************
@@ -244,7 +244,7 @@ const uint32_t getCo2StatusColor()
   else if (sensorCo2 <= CO2LEVEL_MAX_OK)
     return statusLed.Color(0, 255, 0);
   else if (sensorCo2 <= CO2LEVEL_MAX_WARN)
-    return statusLed.Color(255, 200, 0);
+    return statusLed.Color(255, 75, 0);
   else
     return blinkActive ? statusLed.Color(255, 0, 0) : 0;
 }
